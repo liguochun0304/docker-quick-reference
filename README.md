@@ -22,6 +22,7 @@
 
 ## 1. 常用 Docker 指令
 
+
 | 功能     | 完整指令                      | 参数解释                               |
 | -------- | ----------------------------- | -------------------------------------- |
 | 查看镜像 | `docker images`               | 列出本地已有镜像                       |
@@ -63,14 +64,15 @@ sudo systemctl restart docker  # 重启 Docker 服务
 
 **临时使用docker镜像源:**
 
+可临时使用指令去拉取镜像，比如`轩辕镜像`源拉取：
+
+```bash
+docker pull docker.xuanyuan.me/mysql:5.7
 ```
-https://docker.aityp.com/
-```
 
+注意：这里的 mysql:5.7 请替换成你需要的镜像和版本
 
-
-
-
+更多镜像源参考：[dongyubin/DockerHub: 2025年7月更新，目前国内可用Docker镜像源汇总，DockerHub国内镜像加速列表，🚀DockerHub镜像加速器](https://github.com/dongyubin/DockerHub)
 
 ---
 
@@ -273,5 +275,14 @@ split -b 7G -d -a 2 image.tar image_part.
 ```bash
 cat image_part.* > image_full.tar
 ```
+
+---
+
+## 10. 更多详细教程
+
+1. [yeasy/docker\_practice: Learn and understand Docker&Container technologies, with real DevOps practice!](https://github.com/yeasy/docker_practice)
+2. [Docker 教程 | 菜鸟教程](https://www.runoob.com/docker/docker-tutorial.html)
+3. [Windows系统安装WSL，并安装docker服务\_wsl安装docker-CSDN博客](https://blog.csdn.net/xiaohuaidan007/article/details/130160286)
+4. [使用 WSL 2 安装 Docker - Anand's Blog](https://okcody.com/posts/linux/8)
 
 ---

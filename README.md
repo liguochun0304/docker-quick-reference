@@ -18,7 +18,8 @@
 * [7. 镜像导入导出](#7-镜像导入导出)
 * [8. 容器提交为镜像](#8-容器提交为镜像)
 * [9. 附：镜像切分合并](#9-附镜像切分合并)
-
+* [10. docker部署vllm服务 ](#10-docker部署vllm服务)
+* [附录](#更多详细教程)
 ---
 
 ## 1. 常用 Docker 指令
@@ -259,7 +260,7 @@ docker commit -a "Hanyuzhe" -m "添加中文环境" 38e4c8c123a4 mynginx:with-lo
 
 ---
 
-## 9. 附：镜像切分合并（大文件传输）
+## 9. 镜像切分合并（大文件传输）
 
 ### 切分大镜像
 
@@ -279,7 +280,96 @@ cat image_part.* > image_full.tar
 
 ---
 
-## 10. 更多详细教程
+
+## 10. docker部署vllm服务
+### 下载模型权重
+国内使用Hugging Face下载较慢，所以采用modelscope，网速比较快。下载[deepseek](https://www.modelscope.cn/models/deepseek-ai/DeepSeek-R1-Distill-Qwen-7B/summary)下载。
+```python
+from modelscope import snapshot_download
+
+model_dir = snapshot_download(
+    'deepseek-ai/DeepSeek-R1-Distill-Qwen-7B',
+    cache_dir='/your/path/',  # 改成你本地目录
+    revision='master',
+    ignore_patterns=['*.pt', '*.bin']  # 如果你希望跳过非 safetensors 的权重
+)
+
+print(f"模型下载完成，保存路径: {model_dir}")
+```
+### 拉取vllm镜像
+拉取临时的镜像源的镜像
+```bash
+docker pull swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/vllm/vllm-openai:v0.9.2
+docker tag  swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/vllm/vllm-openai:v0.9.2  docker.io/vllm/vllm-openai:v0.9.2
+```
+### docker部署
+
+```bash
+docker run --runtime=nvidia --gpus '"device=0"' \
+        --name model_name \
+        -e OPENAI_API_KEY=api_key \
+        -v /your/path/deepseek-ai/DeepSeek-R1-Distill-Qwen-7B:/deepseek \
+        -p 8000:8000 \
+        --ipc=host \
+        vllm/vllm-openai:v0.9.1 \
+        --model deepseek \
+        --max-model-len 4096 \
+        --tensor-parallel-size 1 \
+        --gpu-memory-utilization 0.5
+
+```
+ 参数说明（vLLM 常用参数）,[更多详细参数见](https://zhuanlan.zhihu.com/p/1916898243423500022)
+
+| 参数                         | 含义                                         |
+| -------------------------- | ------------------------------------------ |
+| `--model`                  | 模型路径，支持 HuggingFace、本地目录                   |
+| `--tokenizer`              | 若与模型不同，可显式指定 tokenizer 路径                  |
+| `--max-model-len`          | 模型最大输入长度                                   |
+| `--gpu-memory-utilization` | GPU 显存使用率（0.0\~1.0）                        |
+| `--tensor-parallel-size`   | 多 GPU 时模型切分并行度（1 表示单卡）                     |
+| `--dtype`                  | 指定精度：`auto`/`float16`/`bfloat16`/`float32` |
+| `--swap-space`             | 内存不足时用于 offload 的 CPU 空间（MB）               |
+| `--max-num-seqs`           | 同时生成的最大并发序列数量                              |
+
+### 调用方式
+
+openAI风格调用
+```python3
+import openai
+
+openai.api_key = "api_key"
+openai.base_url = "http://localhost:8000/v1"
+
+response = openai.ChatCompletion.create(
+    model="deepseek",  # 你可以随便写，vLLM 只部署了一个模型
+    messages=[
+        {"role": "user", "content": "你好，Qwen。"}
+    ],
+    temperature=0.7,
+    max_tokens=256
+)
+
+print(response["choices"][0]["message"]["content"])
+```
+
+langchain风格调用
+```python3
+from langchain.chat_models import ChatOpenAI
+from langchain.schema import HumanMessage
+
+llm = ChatOpenAI(
+    base_url="http://localhost:8003/v1",
+    api_key="api_key",
+    model_name="deepseek",  # 形式要求，可忽略
+)
+
+response = llm([HumanMessage(content="你好，LangChain 使用你了。")])
+# 或者 response = llm.invoke("你好，LangChain 使用你了。")
+print(response.content)
+
+```
+
+## 更多详细教程
 
 1. [yeasy/docker\_practice: Learn and understand Docker&Container technologies, with real DevOps practice!](https://github.com/yeasy/docker_practice)
 2. [Docker 教程 | 菜鸟教程](https://www.runoob.com/docker/docker-tutorial.html)
